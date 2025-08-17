@@ -10,6 +10,7 @@ router = APIRouter()
 MODEL_PATH = "models/best_model.pkl"
 model_pipeline = joblib.load(MODEL_PATH)
 
+# Prediction endpoint
 @router.post("/")
 def predict_risk(data: LoanRequest):
     try:
@@ -36,10 +37,12 @@ def predict_risk(data: LoanRequest):
         labels = ['Poor', 'Fair', 'Good', 'Very Good', 'Excellent']
         df['CreditScoreCategory'] = pd.cut(df['CreditScore'], bins=bins, labels=labels, right=True)
 
+        # Predict using the model
         pred = model_pipeline.predict(df)
         pred_proba = model_pipeline.predict_proba(df)[:, 1]
 
         return {"prediction": int(pred[0]), "risk_score": float(pred_proba[0])}
-
+    
+    # Handle exceptions and return error messages
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))

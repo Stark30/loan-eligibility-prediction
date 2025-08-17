@@ -1,4 +1,6 @@
-# Mapping dictionaries for categorical normalization
+# These dictionaries are used to map categorical inputs to standardized values
+# This is a utility module for normalization of categorical inputs in loan requests
+
 education_map = {
     "High School": "High School",
     "Bachelor": "Bachelor's",

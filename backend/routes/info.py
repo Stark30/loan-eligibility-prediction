@@ -10,9 +10,11 @@ router = APIRouter()
 MODEL_PATH = "models/best_model.pkl"
 model_pipeline = joblib.load(MODEL_PATH)
 
+# Model information endpoint
 @router.get("/")
 def model_info():
     try:
+        # Load dataset to extract feature names and model performance
         df = pd.read_excel("models/loan_dataset.xlsx")
         df['Income_to_LoanRatio'] = df['Income'] / df['LoanAmount']
         df['AgeGroup'] = pd.cut(df['Age'], bins=[18,30,45,60,100], labels=['18-30','31-45','46-60','60+'])
@@ -28,18 +30,21 @@ def model_info():
             'Education','EmploymentType','MaritalStatus','HasMortgage','HasDependents',
             'LoanPurpose','HasCoSigner','AgeGroup','CreditScoreCategory'
         ]
-
+        # Prepare features and target variable
         X = df[numeric_features + categorical_features]
         y = df['Default']
         _, X_val, _, y_val = train_test_split(X,y,test_size=0.3,random_state=42,stratify=y)
 
         try:
+            # Extract feature names from the preprocessor
             preprocessor = model_pipeline.named_steps['preprocessor']
             feature_names = preprocessor.get_feature_names_out()
             feature_names = [f.split("__")[-1] for f in feature_names]
         except Exception:
+            # If preprocessor is not available, use default feature names
             feature_names = None
 
+        # Collect model details
         model_details = []
         for name, clf in model_pipeline.named_estimators_.items():
             if name == "lr":
@@ -48,6 +53,7 @@ def model_info():
             info = {"name": name, "type": type(classifier).__name__}
 
             try:
+                # Evaluate model performance
                 preds = clf.predict(X_val)
                 probas = clf.predict_proba(X_val)[:,1] if hasattr(clf,"predict_proba") else None
                 info["performance"] = {
@@ -60,6 +66,7 @@ def model_info():
             except Exception:
                 info["performance"] = {}
 
+            # Extract feature importances or coefficients
             if hasattr(classifier,"feature_importances_"):
                 values = classifier.feature_importances_
             elif hasattr(classifier,"coef_"):
@@ -67,13 +74,15 @@ def model_info():
             else:
                 values = []
 
+            # Prepare feature importances
             if len(values) > 0 and feature_names and len(values) == len(feature_names):
                 info["feature_importances"] = {fn: round(float(v),3) for fn,v in zip(feature_names,values)}
             elif len(values) > 0:
                 info["feature_importances"] = {f"feature_{i}": round(float(v),3) for i,v in enumerate(values)}
 
             model_details.append(info)
-
+            
+        # Return model details
         return {"voting_classifier_models": model_details}
 
     except Exception as e:
